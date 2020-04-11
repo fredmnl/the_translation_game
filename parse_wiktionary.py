@@ -74,7 +74,6 @@ def parse_wiki(filename=INPUT_FILE):
         for line in f:
             if r'<page>' in line:  # Start accumulating a new page
                 new_page = []
-                num_lines = 0
 
             num_lines += 1
             new_page.append(line.strip())
@@ -86,12 +85,10 @@ def parse_wiki(filename=INPUT_FILE):
                     to_store = vars(word)
                     word_name = to_store.pop('word')
                     parsed_dict[word_name] = to_store
+                    print("words found:", len(parsed_dict))
+                    print("lines read:", num_lines)
                 elif "Wiktionnaire:10000-wp-fr-" in word.word:
                     frequencies.update(**process_frequency(new_page))
-
-            if len(parsed_dict) > 3000:
-
-                break
 
     for word, freq in frequencies.items():
         if word in parsed_dict:
