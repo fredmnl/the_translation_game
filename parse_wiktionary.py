@@ -7,7 +7,7 @@ https://dumps.wikimedia.org/backup-index.html
 import re
 import json
 
-FILENAME = "../translation_game/frwiktionary-20200401-pages-articles-multistream.xml"
+FILENAME = "frwiktionary-20200401-pages-articles-multistream.xml"
 OUTPUT_FILE = "out.txt"
 
 
