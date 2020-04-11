@@ -3,16 +3,16 @@ Parse dump of wiktionary. This dump can be downloaded from:
 https://dumps.wikimedia.org/backup-index.html
 """
 
-
 import re
 import json
 
-FILENAME = "../translation_game/frwiktionary-20200401-pages-articles-multistream.xml"
-OUTPUT_FILE = "out.txt"
+
+INPUT_FILE = "frwiktionary-20200401-pages-articles-multistream.xml"
+OUTPUT_FILE = "parsed_wiki_fr2sp.json"
 
 
 class Word():
-    valid_types = ('nom',)  # TODO
+    valid_types = {'homophones', 'adverbe', 'nom', 'adverbe interrogatif', 'locution-phrase', 'adjectif', 'verbe'}
 
     def __init__(self, list_of_lines):
         self.word = None
@@ -55,7 +55,7 @@ class Word():
     def is_valid(self):
       return (self.word is not None and
               self.translation_es and
-              self.type is not None)
+              self.type in Word.valid_types)
 
 def process_frequency(lines):
     frequencies = {}
@@ -65,7 +65,7 @@ def process_frequency(lines):
             frequencies[match.group('word')] = int(match.group('freq'))
     return frequencies
 
-def parse_wiki(filename=FILENAME):
+def parse_wiki(filename=INPUT_FILE):
     parsed_dict = {}
     frequencies = {}
     num_pages, num_lines = 0, 0
@@ -90,6 +90,7 @@ def parse_wiki(filename=FILENAME):
                     frequencies.update(**process_frequency(new_page))
 
             if len(parsed_dict) > 3000:
+
                 break
 
     for word, freq in frequencies.items():

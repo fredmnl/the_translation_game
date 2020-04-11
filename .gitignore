@@ -130,3 +130,5 @@ dmypy.json
 
 # data dump
 frwiktionary-20200401-pages-articles-multistream.xml
+*.txt
+*.json
