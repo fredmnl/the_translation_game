@@ -5,8 +5,10 @@ https://dumps.wikimedia.org/backup-index.html
 
 
 import re
+import json
 
-FILENAME = "frwiktionary-20200401-pages-articles-multistream.xml"
+FILENAME = "../translation_game/frwiktionary-20200401-pages-articles-multistream.xml"
+OUTPUT_FILE = "out.txt"
 
 
 class Word():
@@ -15,7 +17,7 @@ class Word():
     def __init__(self, list_of_lines):
         self.word = None
         self.type = None
-        self.translation_es = set()
+        self.translation_es = []
 
         self.process(list_of_lines)
 
@@ -41,11 +43,13 @@ class Word():
                 return
 
     def find_translation_es(self, list_of_lines):
+        translations = set()
         for line in list_of_lines:
             if '* {{T|es}}' in line:
                 match = re.findall('(?<=\{\{trad\+\|es\|)[^\}]*(?=\}\})', line)
-                self.translation_es = self.translation_es.union(
+                translations = translations.union(
                     word.split('|')[0] for word in match)
+        self.translation_es = list(translations)
 
     @property
     def is_valid(self):
@@ -53,9 +57,17 @@ class Word():
               self.translation_es and
               self.type is not None)
 
+def process_frequency(lines):
+    frequencies = {}
+    for line in lines:
+        match = re.search('\[\[(?P<word>.*)\]\]\ \((?P<freq>\w+)\)', line)
+        if match is not None:
+            frequencies[match.group('word')] = int(match.group('freq'))
+    return frequencies
 
 def parse_wiki(filename=FILENAME):
     parsed_dict = {}
+    frequencies = {}
     num_pages, num_lines = 0, 0
     new_page = []
     with open(filename, 'r') as f:
@@ -74,13 +86,18 @@ def parse_wiki(filename=FILENAME):
                     to_store = vars(word)
                     word_name = to_store.pop('word')
                     parsed_dict[word_name] = to_store
-                    print(len(parsed_dict))
+                elif "Wiktionnaire:10000-wp-fr-" in word.word:
+                    frequencies.update(**process_frequency(new_page))
 
-            if len(parsed_dict) > 1000:
+            if len(parsed_dict) > 3000:
                 break
 
-    print(parsed_dict)
+    for word, freq in frequencies.items():
+        if word in parsed_dict:
+            parsed_dict[word]['frequency'] = freq
 
+    with open(OUTPUT_FILE, "w") as f:
+        f.write(json.dumps(parsed_dict))
 
 if __name__ == '__main__':
     parse_wiki()
