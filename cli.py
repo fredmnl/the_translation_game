@@ -14,7 +14,32 @@ def read_data(filename='parsed_wiki_fr2sp.json'):
     return data
 
 
-class Oracle(object):
+class Sample(object):
+    def __init__(self, word, word_dict):
+        self._word = word
+        self._word_dict = word_dict
+
+    @property
+    def word(self):
+        return self._word
+
+    @property
+    def freq(self):
+        return self._word_dict['frequency']
+
+    @property
+    def translations_raw(self):
+        return self._word_dict['translation_es']
+
+    @property
+    def translations(self):
+        return set(unidecode.unidecode(x) for x in self.translations_raw)
+
+    def translation_is_correct(self, translation_input):
+        return translation_input in self.translations
+
+
+class WordGenerator(object):
     def __init__(self, data):
         self._data = data
         self._words = list(data.keys())
@@ -22,50 +47,27 @@ class Oracle(object):
         self._range = list(range(len(self._words)))
 
     def new_sample(self):
-        self._current_idx = random.choices(self._range, weights=self._freqs)[0]
-
-    def evaluate(self, translation_input):
-        return translation_input in self.current_translations
-
-    def downweight_current(self):
-        self._freqs[self._current_idx] = 0
-
-    @property
-    def current_word(self):
-        return self._words[self._current_idx]
-
-    @property
-    def current_freq(self):
-        return self._freqs[self._current_idx]
-
-    @property
-    def current_translations_raw(self):
-        return self._data[self.current_word]['translation_es']
-
-    @property
-    def current_translations(self):
-        return set(unidecode.unidecode(x) for x in self.current_translations_raw)
+        idx = random.choices(self._range, weights=self._freqs)[0]
+        return Sample(word=self._words[idx],
+                      word_dict=self._data[self._words[idx]])
 
 
 def main():
     data = read_data()
-    oracle = Oracle(data)
+    word_generator = WordGenerator(data)
     correct_count, total_count = 0, 0
     try:
         while True:
-            oracle.new_sample()
-            translation_input = input(f'Translate: {oracle.current_word}\n')
+            sample = word_generator.new_sample()
+            translation_input = input(f'Translate: {sample.word}\n')
             total_count += 1
 
-            correct = oracle.evaluate(translation_input)
-
-            if correct:
-                oracle.downweight_current()
+            if sample.translation_is_correct(translation_input):
                 correct_count += 1
                 print(f'Correct!')
             else:
                 print(f'Wrong :(')
-            print(f'(All correct answers: {oracle.current_translations_raw})\n')
+            print(f'(All correct answers: {sample.translations_raw})\n')
     except KeyboardInterrupt:
         if total_count:
             percentage_correct = round(100. * correct_count / total_count, 1)
