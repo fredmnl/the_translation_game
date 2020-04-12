@@ -107,7 +107,7 @@ class Scorer(object):
         return p_freq_array * p_user_incorrect_array * p_dist_array
 
 
-class WordGenerator(object):
+class Game(object):
     def __init__(self, data):
         self._data = data
         self._words = list(data.keys())
@@ -116,7 +116,26 @@ class WordGenerator(object):
         self._user = User()
         self._scorer = Scorer(data, self._user._past)
 
-    def new_sample(self):
+        self.total_count = 0
+        self.correct_count = 0
+
+    def new_round(self):
+        sample = self._new_sample()
+        translation_input = input(f'Translate: {sample.word}\n')
+        self.total_count += 1
+        correct_answers_str = ','.join(sample.translations_raw)
+
+        if sample.translation_is_correct(translation_input):
+            self.correct_count += 1
+            self.update_user(result=True, sample=sample)
+            print(f'{bcolors.GREEN}Correct! {bcolors.ENDC} '
+                    f'(All correct answers: {correct_answers_str})\n')
+        else:
+            self.update_user(result=False, sample=sample)
+            print(f'{bcolors.RED}Wrong :( {bcolors.ENDC} '
+                    f'(All correct answers: {correct_answers_str})\n')
+
+    def _new_sample(self):
         # max_freq = max(word_dict['frequency'] for word_dict in self._data.values())
         # self._freqs = []
         # for word, word_dict in self._data.items():
@@ -136,6 +155,18 @@ class WordGenerator(object):
     def update_user(self, result: bool, sample: Sample):
         self._user.log_entry(word=sample.word, result=result)
         self._scorer.update_with_user_past(self._user._past)
+
+    def exit(self):
+        self._user.save_past()
+        if self.total_count:
+            percentage_correct = round(
+                100. * self.correct_count / self.total_count, 1)
+            print('\n')
+            print('*' * 80)
+            print(
+                f'Total score: {self.correct_count} correct translations out of {self.total_count} ({percentage_correct}%)')
+            print('*' * 80)
+        print('Goodbye!')
 
 
 class User(object):
@@ -166,35 +197,12 @@ class User(object):
 
 def main():
     data = read_data()
-    word_generator = WordGenerator(data)
-    correct_count, total_count = 0, 0
+    game = Game(data)
     try:
         while True:
-            sample = word_generator.new_sample()
-            translation_input = input(f'Translate: {sample.word}\n')
-            total_count += 1
-            correct_answers_str = ','.join(sample.translations_raw)
-
-            if sample.translation_is_correct(translation_input):
-                correct_count += 1
-                word_generator.update_user(result=True, sample=sample)
-                print(f'{bcolors.GREEN}Correct! {bcolors.ENDC} '
-                      f'(All correct answers: {correct_answers_str})\n')
-            else:
-                word_generator.update_user(result=False, sample=sample)
-                print(f'{bcolors.RED}Wrong :( {bcolors.ENDC} '
-                      f'(All correct answers: {correct_answers_str})\n')
+            game.new_round()
     except KeyboardInterrupt:
-        if total_count:
-            percentage_correct = round(100. * correct_count / total_count, 1)
-            print('\n')
-            print('*' * 80)
-            print(
-                f'Total score: {correct_count} correct translations out of {total_count} ({percentage_correct}%)')
-            print('*' * 80)
-        print('Goodbye!')
-        word_generator._user.save_past()
-        exit()
+        game.exit()
 
 
 if __name__ == '__main__':
