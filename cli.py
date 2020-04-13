@@ -57,70 +57,70 @@ class Sample(object):
         return translation_input.lower() in self.translations
 
 
-class Scorer(object):
+class WordGenerator(object):
     def __init__(self, data, user_past,
-                 weight_p_freq=100.0,
-                 weight_p_user_incorrect=1.0,
-                 weight_p_dist=1.0):
+                 p_new_word=0.7):
         self._data = data
         self._user_past = user_past
+        self._range = list(range(len(self._data)))
+        self._words = list(data.keys())
 
-        sum_weights = weight_p_freq + weight_p_user_incorrect + weight_p_dist
-        self._weight_p_freq = weight_p_freq / sum_weights
-        self._weight_p_user_incorrect = weight_p_user_incorrect / sum_weights
-        self._weight_p_dist = weight_p_dist / sum_weights
+        assert min(max(p_new_word, 0), 1) == p_new_word, (
+            f'p_new_word ({p_new_word}) should be in [0, 1]')
+        self._p_new_word = p_new_word
 
         # probability of selecting word based on frequency
-        p_freq = np.array([word_dict['frequency'] for word_dict in data.values()], dtype=np.float32)
-        p_freq /= np.max(p_freq)
-        self._p_freq = dict(zip(self._data.keys(), p_freq))
+        self._p_freq = [word_dict['frequency'] for word_dict in data.values()]
+        max_freq = max(self._p_freq)
+        self._p_freq = [freq / max_freq for freq in self._p_freq]
 
-        # prior probability of 0.5 for user to predict each word incorrectly
-        self._p_user_incorrect = dict((k, 0.5) for k in self._data)
+        self._incorrect_words = set()
+        for word, word_data in user_past.items():
+            # update with user's last guess
+            self.update_with_result(word, word_data['correct'][-1])
 
-        # compute minimal levenshtein distance between word and translation (this is taking long)
-        print("Computing Levenshtein distance, I'm a bit slow...")
-        self._p_dist = dict()
-        for word, word_dict in self._data.items():
-            sample = Sample(word, word_dict)
-            translations = sample.translations
-            dist = min(
-                string_distance.levenshtein_distance(unidecode.unidecode(word).lower(), tr_word)
-                for tr_word in translations)
-            if dist == 0:  # very easy word: same in both languages
-                self._p_dist[word] = 0.0
-            elif dist <= 2:  # difficult word: close but not quite the same
-                self._p_dist[word] = 1.0
-            else:  # other cases
-                self._p_dist[word] = 0.5
+    def update_with_result(self, word, user_was_correct):
+        if user_was_correct:
+            # remove word from available words
+            for idx, word_to_match in enumerate(self._data):
+                if word == word_to_match:
+                    break
+            del self._p_freq[idx]
+            del self._words[idx]
+            self._range.pop(-1)
+            if word in self._incorrect_words:
+                self._incorrect_words.remove(word)
+        else:
+            # add word to incorrect words if user was incorrect
+            self._incorrect_words.add(word)
 
-    def update_with_user_past(self, user_past):
-        # updating probability based on user history
-        for k, v in self._user_past.items():
-            success_rate = np.mean(v['correct'])
-            self._p_user_incorrect[k] = 1.0 - success_rate
 
-    def get_proba(self):
-        p_freq_array = np.array(list(self._p_freq.values()))
-        p_user_incorrect_array = np.array(list(self._p_user_incorrect.values()))
-        p_dist_array = np.array(list(self._p_dist.values()))
-        return p_freq_array * p_user_incorrect_array * p_dist_array
+    def new_sample(self):
+        sample_from_incorrect_words = (
+            random.uniform(0, 1) >= self._p_new_word and len(self._incorrect_words) > 3
+        )
+        if sample_from_incorrect_words:
+            print('Old word')
+            new_word = random.choice(list(self._incorrect_words))
+        else:
+            print('New word')
+            new_word_idx = random.choices(self._range, weights=self._p_freq)[0]
+            new_word = self._words[new_word_idx]
+
+        return Sample(word=new_word, word_dict=self._data[new_word])
 
 
 class Game(object):
     def __init__(self, data):
         self._data = data
-        self._words = list(data.keys())
-        self._freqs = [word_dict['frequency'] for word_dict in data.values()]
-        self._range = list(range(len(self._words)))
         self._user = User()
-        self._scorer = Scorer(data, self._user._past)
+        self._word_generator = WordGenerator(data, self._user._past)
 
         self.total_count = 0
         self.correct_count = 0
 
     def new_round(self):
-        sample = self._new_sample()
+        sample = self._word_generator.new_sample()
         translation_input = input(f'Translate: {sample.word}\n')
         self.total_count += 1
         correct_answers_str = ','.join(sample.translations_raw)
@@ -135,26 +135,9 @@ class Game(object):
             print(f'{bcolors.RED}Wrong :( {bcolors.ENDC} '
                     f'(All correct answers: {correct_answers_str})\n')
 
-    def _new_sample(self):
-        # max_freq = max(word_dict['frequency'] for word_dict in self._data.values())
-        # self._freqs = []
-        # for word, word_dict in self._data.items():
-        #     freq_component = word_dict['frequency']/max_freq
-        #     age_component = 0
-        #     if word in self._user._past and not self._user._past[word]["past_guesses"][-1]:
-        #         age_component = min(5, (datetime.datetime.now() - self._user._past[word]["last_guess"]).seconds)
-        #     if word in self._user._past:
-        #         self._user._past[word]["age_component"] = age_component
-
-        #     self._freqs += [freq_component + age_component]
-
-        idx = random.choices(self._range, weights=self._scorer.get_proba())[0]
-        return Sample(word=self._words[idx],
-                      word_dict=self._data[self._words[idx]])
-
     def update_user(self, result: bool, sample: Sample):
         self._user.log_entry(word=sample.word, result=result)
-        self._scorer.update_with_user_past(self._user._past)
+        self._word_generator.update_with_result(word=sample.word, user_was_correct=result)
 
     def exit(self):
         self._user.save_past()
