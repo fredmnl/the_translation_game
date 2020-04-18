@@ -55,54 +55,65 @@ class Sample(object):
 
 
 class WordGenerator(object):
-    def __init__(self, data, user_past,
-                 p_new_word=0.7):
+    def __init__(self, data, user_past, p_new_word=0.7, stack_size=100):
         self._data = data
         self._user_past = user_past
-        self._range = list(range(len(self._data)))
-        self._words = list(data.keys())
+
+        # unseen words initialized as all words
+        self._unseen = set(self._data.keys())
+
+        self._unseen_buffer = []
+        self._unseen_buffer_idx = 0
+        self._stack_size = stack_size
 
         assert min(max(p_new_word, 0), 1) == p_new_word, (
             f'p_new_word ({p_new_word}) should be in [0, 1]')
         self._p_new_word = p_new_word
 
-        # probability of selecting word based on frequency
-        self._p_freq = [word_dict['frequency'] for word_dict in data.values()]
-        max_freq = max(self._p_freq)
-        self._p_freq = [freq / max_freq for freq in self._p_freq]
-
-        self._incorrect_words = set()
+        self._seen_incorrect = set()
+        self._seen_correct = set()
         for word, word_data in user_past.items():
             # update with user's last guess
             self.update_with_result(word, word_data['correct'][-1])
 
-    def update_with_result(self, word, user_was_correct):
-        if user_was_correct:
-            # remove word from available words
-            for idx, word_to_match in enumerate(self._data):
-                if word == word_to_match:
-                    break
-            del self._p_freq[idx]
-            del self._words[idx]
-            self._range.pop(-1)
-            if word in self._incorrect_words:
-                self._incorrect_words.remove(word)
-        else:
-            # add word to incorrect words if user was incorrect
-            self._incorrect_words.add(word)
+        self.create_incorrect_buffer()
 
+    def compute_freq_proba(self, word_iterator):
+        p_list = [self._data[word]['frequency'] for word in word_iterator]
+        sum_p_list = sum(p_list)
+        return [x / sum_p_list for x in p_list]
+
+    def update_with_result(self, word, user_was_correct):
+        self._unseen.discard(word)
+        if user_was_correct:
+            self._seen_correct.add(word)
+            self._seen_incorrect.discard(word)
+        else:
+            self._seen_incorrect.add(word)
+            self._seen_correct.discard(word)
+
+    def create_incorrect_buffer(self):
+        self._unseen -= set(self._unseen_buffer)
+        self._unseen -= self._seen_correct
+        self._unseen -= self._seen_incorrect
+
+        p = self.compute_freq_proba(self._unseen)
+        self._unseen_stack = np.random.choice(
+            list(self._unseen), size=self._stack_size, replace=False, p=p)
+
+        self._unseen_buffer_idx = 0
 
     def new_sample(self):
-        sample_from_incorrect_words = (
-            random.uniform(0, 1) >= self._p_new_word and len(self._incorrect_words) > 3
+        sample_from_incorrect = (
+            random.uniform(0, 1) >= self._p_new_word and len(self._seen_incorrect) > 3
         )
-        if sample_from_incorrect_words:
-            print('Old word')
-            new_word = random.choice(list(self._incorrect_words))
+        if sample_from_incorrect:
+            new_word = random.choice(list(self._seen_incorrect))
         else:
-            print('New word')
-            new_word_idx = random.choices(self._range, weights=self._p_freq)[0]
-            new_word = self._words[new_word_idx]
+            if self._unseen_buffer_idx == self._stack_size:
+                self.create_incorrect_buffer()
+            new_word = self._unseen_stack[self._unseen_buffer_idx]
+            self._unseen_buffer_idx += 1
 
         return Sample(word=new_word, word_dict=self._data[new_word])
 
@@ -115,10 +126,18 @@ class Game(object):
 
         self.total_count = 0
         self.correct_count = 0
+        self._last_sample = None
 
     def new_round(self):
         sample = self._word_generator.new_sample()
         translation_input = input(f'Translate: {sample.word}\n')
+        if translation_input == "!" and self._last_sample is not None:
+            # remove last sample from appearing later, this is a hack for now
+            self.update_user(result=True, sample=self._last_sample)
+            print(f'Removed {self._last_sample.word}: it will not appear anymore')
+            translation_input = input(f'Translate: {sample.word}\n')
+
+        self._last_sample = sample
         self.total_count += 1
         correct_answers_str = ','.join(sample.translations_raw)
 
