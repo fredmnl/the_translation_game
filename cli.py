@@ -55,7 +55,7 @@ class Sample(object):
 
 
 class WordGenerator(object):
-    def __init__(self, data, user_past, p_new_word=0.7, stack_size=100):
+    def __init__(self, data, user_past, p_new_word=0.7, buffer_size=100):
         self._data = data
         self._user_past = user_past
 
@@ -64,7 +64,7 @@ class WordGenerator(object):
 
         self._unseen_buffer = []
         self._unseen_buffer_idx = 0
-        self._stack_size = stack_size
+        self._buffer_size = buffer_size
 
         assert min(max(p_new_word, 0), 1) == p_new_word, (
             f'p_new_word ({p_new_word}) should be in [0, 1]')
@@ -99,7 +99,7 @@ class WordGenerator(object):
 
         p = self.compute_freq_proba(self._unseen)
         self._unseen_stack = np.random.choice(
-            list(self._unseen), size=self._stack_size, replace=False, p=p)
+            list(self._unseen), size=self._buffer_size, replace=False, p=p)
 
         self._unseen_buffer_idx = 0
 
@@ -110,7 +110,7 @@ class WordGenerator(object):
         if sample_from_incorrect:
             new_word = random.choice(list(self._seen_incorrect))
         else:
-            if self._unseen_buffer_idx == self._stack_size:
+            if self._unseen_buffer_idx == self._buffer_size:
                 self.create_incorrect_buffer()
             new_word = self._unseen_stack[self._unseen_buffer_idx]
             self._unseen_buffer_idx += 1
