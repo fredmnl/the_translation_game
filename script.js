@@ -62,11 +62,9 @@ function captureKeyboard(event){
             sendResult(pregunta, result);
             if(result){
                 $(".info-text span").text("Correct ! Réponses possibles : " + respuestas.toString());
-                //$(".info-text span").css('color', 'green');
                 $(".info-text span").removeClass("incorrect");
             } else {
                 $(".info-text span").text("Incorrect ! Réponses possibles : " + respuestas.toString());
-                //$(".info-text span").css('color', 'red');
                 $(".info-text span").addClass("incorrect");
             }
         }

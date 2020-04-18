@@ -35,3 +35,9 @@ services:
       - traefik.frontend.rule=Host:thetranslationgame.HOST.com;PathPrefix:/api/
       - traefik.docker.network=traefik_net
       - traefik.port=80
+
+  redis:
+    image: redis:latest
+    restart: always
+    networks:
+      - lan

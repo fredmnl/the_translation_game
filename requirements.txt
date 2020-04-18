@@ -1,2 +1,4 @@
 unidecode
 numpy
+redis
+msgpack

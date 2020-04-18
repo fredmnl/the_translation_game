@@ -6,6 +6,8 @@ import datetime
 import numpy as np
 import time
 
+import redis
+import msgpack
 
 class bcolors:
     HEADER = '\033[95m'
@@ -19,12 +21,21 @@ class bcolors:
 
 
 def read_data(filename='parsed_wiki_fr2sp.json'):
+
+    db = redis.Redis(host='redis')
+
+    pack = db.get(filename)
+    if pack is not None:
+        return msgpack.unpackb(pack)
+
     with open(filename, 'r') as f:
         data = json.load(f)
 
     for word_dict in data.values():
         if 'frequency' not in word_dict:
             word_dict['frequency'] = 1
+
+    db.set(filename, msgpack.packb(data, use_bin_type=True))
 
     return data
 
@@ -131,7 +142,7 @@ class Game(object):
     def new_round(self):
         sample = self._word_generator.new_sample()
         translation_input = input(f'Translate: {sample.word}\n')
-        if translation_input == "!" and self._last_sample is not None:
+        if translation_input == '!' and self._last_sample is not None:
             # remove last sample from appearing later, this is a hack for now
             self.update_user(result=True, sample=self._last_sample)
             print(f'Removed {self._last_sample.word}: it will not appear anymore')
@@ -169,8 +180,9 @@ class Game(object):
 
 
 class User(object):
-    def __init__(self, user_filename="default_user_data.json"):
+    def __init__(self, user_filename='default_user_data.json'):
         self._user_filename = user_filename
+        self._db = redis.Redis(host='redis')
         self.load_past()
 
     def log_entry(self, word, result):
@@ -179,11 +191,14 @@ class User(object):
                 'timestamp': [time.time()],
                 'correct': [result]}
         else:
-            self._past[word]["timestamp"].append(time.time())
-            self._past[word]["correct"].append(result)
+            self._past[word]['timestamp'].append(time.time())
+            self._past[word]['correct'].append(result)
 
     def load_past(self):
-        if not os.path.exists(self._user_filename):
+        pack = self._db.get('user')
+        if pack is not None:
+            self._past = msgpack.unpackb(pack)
+        elif not os.path.exists(self._user_filename):
             self._past = dict()
         else:
             with open(self._user_filename, 'r') as f:
@@ -192,7 +207,7 @@ class User(object):
     def save_past(self):
         with open(self._user_filename, 'w') as f:
             json.dump(self._past, f)
-
+        self._db.set('user', msgpack.packb(self._past, use_bin_type=True))
 
 def main():
     data = read_data()
