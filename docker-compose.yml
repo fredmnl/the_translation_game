@@ -1,0 +1,37 @@
+version: "3"
+
+networks:
+  traefik_net:
+    external: true
+  lan:
+    internal: true
+
+services:
+  frontend:
+    image: nginx
+    build:
+      context: .
+      dockerfile: Dockerfile-frontend
+    restart: always
+    networks:
+      - traefik_net
+      - lan
+    labels:
+      - traefik.frontend.rule=Host:thetranslationgame.HOST.com
+      - traefik.docker.network=traefik_net
+      - traefik.port=80
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile-backend
+    restart: always
+    volumes:
+      - ~/dev/the_translation_game/default_user_data.json:/app/default_user_data.json
+    networks:
+      - traefik_net
+      - lan
+    labels:
+      - traefik.frontend.rule=Host:thetranslationgame.HOST.com;PathPrefix:/api/
+      - traefik.docker.network=traefik_net
+      - traefik.port=80

@@ -4,10 +4,7 @@ import unidecode
 import random
 import datetime
 import numpy as np
-import scipy.special
 import time
-
-import string_distance
 
 
 class bcolors:
