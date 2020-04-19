@@ -52,7 +52,9 @@ def generate_words(data, user_past, p_new_word=0.7, num_words=100):
 
     # randomly replace some elements with words from seen_incorrect
     for i in range(num_words):
-        if random.uniform(0, 1) >= p_new_word and len(seen_incorrect) > 3:
+        if not seen_incorrect:
+            break
+        if random.uniform(0, 1) >= p_new_word:
             incorrect_word = random.choice(list(seen_incorrect))
             seen_incorrect.discard(incorrect_word)
             samples[i] = incorrect_word
