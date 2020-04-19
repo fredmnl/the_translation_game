@@ -7,10 +7,10 @@ from fastapi.responses import HTMLResponse, FileResponse
 app = FastAPI()
 
 @app.get('/api/getWord/')
-async def read_root():
+async def read_root(num_words: int):
     data = cli.read_data()
     game = cli.Game(data)
-    return game._word_generator.new_sample()
+    return [game._word_generator.new_sample() for _ in range(num_words)]
 
 @app.get('/api/postResult/')
 async def read_root(word: str, result: bool):

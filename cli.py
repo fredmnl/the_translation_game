@@ -120,6 +120,7 @@ class WordGenerator(object):
         )
         if sample_from_incorrect:
             new_word = random.choice(list(self._seen_incorrect))
+            self._seen_incorrect.remove(new_word)
         else:
             if self._unseen_buffer_idx == self._buffer_size:
                 self.create_incorrect_buffer()
