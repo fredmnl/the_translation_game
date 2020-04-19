@@ -38,10 +38,8 @@ def generate_words(data, user_past, p_new_word=0.7, num_words=100):
     for word, word_data in user_past.items():
         unseen.discard(word)
         # update with user's last guess
-        user_was_correct = word_data['correct'][-1]
-        if user_was_correct:
-            seen_incorrect.discard(word)
-        else:
+        user_was_incorrect = not word_data['correct'][-1]
+        if user_was_incorrect:
             seen_incorrect.add(word)
 
     proba = [data[word]['frequency'] for word in unseen]
