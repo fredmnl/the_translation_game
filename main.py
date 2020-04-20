@@ -16,8 +16,8 @@ async def read_root(num_words: int):
     user = backend.User(USER_FILENAME)
     new_words = backend.generate_words(
         data=data, user_past=user.past, num_words=num_words)
-    return json.loads([{'word': word, 'translation': data[word]['translation_es']}
-                       for word in new_words])
+    return [{'word': word, 'translation': data[word]['translation_es']}
+                       for word in new_words]
 
 
 @app.get('/api/postResult/')
