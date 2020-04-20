@@ -19,12 +19,12 @@ function loadWord(){
     }
 
     // Display the word that was previously buffered
-    pregunta = preguntas[0]["_word"];
-    respuestas = preguntas[0]["_word_dict"]["translation_es"];
+    pregunta = preguntas[0]["word"];
+    respuestas = preguntas[0]["translation"];
     preguntas.shift()
     if(pregunta.length > 0){
         $(".upper-span").text(pregunta);
-        var el     = $(".upper-text"),  
+        var el     = $(".upper-text"),
             newone = el.clone(true);
         el.addClass("toRemove");
         el.before(newone);
