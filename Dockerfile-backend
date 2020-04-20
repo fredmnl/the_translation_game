@@ -3,7 +3,7 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:latest
 COPY main.py /app/
 COPY backend.py /app/
 COPY default_user_data.json /app/
-COPY parsed_wiki_fr2sp.json /app/
+COPY dict/ /app/
 COPY requirements.txt /app/
 
 RUN pip install -r requirements.txt

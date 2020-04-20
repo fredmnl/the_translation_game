@@ -8,7 +8,7 @@ import redis
 import msgpack
 
 
-def read_data(filename='parsed_wiki_fr2sp.json'):
+def read_data(filename='dict/parsed_wiki_fr2sp.json'):
 
     db = redis.Redis(host='redis')
 

@@ -8,7 +8,7 @@ import json
 
 
 INPUT_FILE = "frwiktionary-20200401-pages-articles-multistream.xml"
-OUTPUT_FILE = "parsed_wiki_fr2sp.json"
+OUTPUT_FILE = "dict/parsed_wiki_fr2sp.json"
 
 
 class Word():

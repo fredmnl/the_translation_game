@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
 app = FastAPI()
 
-DATA_FILENAME = 'parsed_wiki_fr2sp.json'
+DATA_FILENAME = 'dict/parsed_wiki_fr2sp.json'
 USER_FILENAME = 'default_user_data.json'
 
 @app.get('/api/getWord/')
