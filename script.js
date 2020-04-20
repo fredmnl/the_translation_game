@@ -1,30 +1,30 @@
 
-var pregunta = "";
-var respuestas = null;
-var next_pregunta = "";
-var next_respuestas = null;
+var preguntas;
+var pregunta;
+var respuestas;
 var buffer = "";
 var result = false;
 
 function loadWord(){
-
-    // Asynchronously get the word that will be displayed on the next call
-    $.ajax({
-        url: '/api/getWord/',
-        type: 'GET',
-        dataType: 'json',
-        success: function(json){
-            next_pregunta = json["_word"];
-            next_respuestas = json["_word_dict"]["translation_es"];
-        }
-    });
+    if(preguntas === undefined || preguntas.length < 3){
+        // Asynchronously get the word that will be displayed on the next call
+        $.ajax({
+            url: '/api/getWord/?num_words=20',
+            type: 'GET',
+            dataType: 'json',
+            success: function(json){
+                preguntas = json;
+            }
+        });
+    }
 
     // Display the word that was previously buffered
-    pregunta = next_pregunta;
-    respuestas = next_respuestas;
+    pregunta = preguntas[0]["word"];
+    respuestas = preguntas[0]["translation"];
+    preguntas.shift()
     if(pregunta.length > 0){
         $(".upper-span").text(pregunta);
-        var el     = $(".upper-text"),  
+        var el     = $(".upper-text"),
             newone = el.clone(true);
         el.addClass("toRemove");
         el.before(newone);
@@ -50,7 +50,7 @@ function captureBackspace(event){
 function captureKeyboard(event){
     if(event.which == 13){
         $(".lower-span").removeClass("init");
-        if(respuestas !== null){ // This is unnecessary if no word has been loaded yet, we are still displaying the first screen
+        if(preguntas !== undefined && respuestas !== undefined){ // This is unnecessary if no word has been loaded yet, we are still displaying the first screen
             result = false;
             // Check the buffer against all available translations for a match
             respuestas.forEach(function (item, index){

@@ -59,8 +59,7 @@ def generate_words(data, user_past, p_new_word=0.7, num_words=100):
             seen_incorrect.discard(incorrect_word)
             samples[i] = incorrect_word
 
-    return [{'word': sample, 'translation': data[sample]['translation_es']}
-            for sample in samples]
+    return samples
 
 
 class User(object):
